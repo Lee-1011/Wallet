@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, Route, Switch, useLocation } from 'wouter';
 import {
   ArrowDownToLine, ArrowLeft, ArrowRight, BarChart3, CalendarDays, CarFront, Check, CircleHelp,
@@ -10,6 +10,7 @@ import {
   currency, dayKey, downloadText, exportCsv, formatDateTime, localDateTimeInput, monthKey,
   persistLedger, readLedger, suggestCategory,
 } from './lib/ledger';
+import { parseQuickEntryParams, stripQuickEntryParams, type ExpenseReviewDraft } from './lib/expense-ingest';
 import './index.css';
 
 const categoryColors = ['#2e654f', '#d47c58', '#e3b55d', '#6e9aa0', '#a89abe', '#85a77c', '#bd827b', '#879b9d', '#a8a17d', '#b4a58d'];
@@ -19,8 +20,26 @@ function App() {
   const [data, setData] = useState<LedgerData>(initialData);
   const [activeModal, setActiveModal] = useState<'add' | 'edit' | 'delete' | 'clear' | null>(null);
   const [activeTransaction, setActiveTransaction] = useState<Transaction | null>(null);
+  const [quickEntryPrefill, setQuickEntryPrefill] = useState<ExpenseReviewDraft | null>(null);
   const [toast, setToast] = useState('');
   const [location] = useLocation();
+  const quickAddProcessed = useRef(false);
+
+  useEffect(() => {
+    if (quickAddProcessed.current) return;
+    quickAddProcessed.current = true;
+    const prefill = parseQuickEntryParams(window.location.search);
+    if (!prefill) return;
+
+    setQuickEntryPrefill(prefill);
+    setActiveTransaction(null);
+    setActiveModal('add');
+    window.history.replaceState(
+      window.history.state,
+      '',
+      stripQuickEntryParams(window.location.href),
+    );
+  }, []);
 
   const updateData = (next: LedgerData) => {
     setData(next);
@@ -30,8 +49,8 @@ function App() {
     setToast(message);
     window.setTimeout(() => setToast(''), 2400);
   };
-  const beginAdd = () => { setActiveTransaction(null); setActiveModal('add'); };
-  const beginEdit = (transaction: Transaction) => { setActiveTransaction(transaction); setActiveModal('edit'); };
+  const beginAdd = () => { setActiveTransaction(null); setQuickEntryPrefill(null); setActiveModal('add'); };
+  const beginEdit = (transaction: Transaction) => { setQuickEntryPrefill(null); setActiveTransaction(transaction); setActiveModal('edit'); };
   const saveTransaction = (values: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>, id?: string) => {
     const now = new Date().toISOString();
     const updated: Transaction = id
@@ -42,6 +61,7 @@ function App() {
       : [updated, ...data.transactions];
     updateData({ ...data, transactions: transactions.sort((a, b) => b.datetime.localeCompare(a.datetime)) });
     setActiveModal(null);
+    setQuickEntryPrefill(null);
     notify(id ? 'Purchase updated' : 'Purchase saved');
   };
   const deleteTransaction = () => {
@@ -101,8 +121,9 @@ function App() {
         <TransactionForm
           key={`${activeModal}-${activeTransaction?.id ?? 'new'}`}
           initial={activeModal === 'edit' ? activeTransaction : null}
+          prefill={activeModal === 'add' ? quickEntryPrefill : null}
           defaultPaymentMethod={data.settings.defaultPaymentMethod}
-          onClose={() => setActiveModal(null)}
+          onClose={() => { setActiveModal(null); setQuickEntryPrefill(null); }}
           onSave={saveTransaction}
         />
       )}
@@ -377,14 +398,16 @@ function SettingsPage({ data, onUpdate, onExport, onClear, notify }: {
   );
 }
 
-function TransactionForm({ initial, defaultPaymentMethod, onClose, onSave }: {
+function TransactionForm({ initial, prefill, defaultPaymentMethod, onClose, onSave }: {
   initial: Transaction | null; defaultPaymentMethod: PaymentMethod; onClose: () => void;
+  prefill: ExpenseReviewDraft | null;
   onSave: (values: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>, id?: string) => void;
 }) {
-  const [merchant, setMerchant] = useState(initial?.merchant ?? '');
-  const [amount, setAmount] = useState(initial ? String(initial.amount) : '');
-  const [category, setCategory] = useState<Category>(initial?.category ?? 'Food & Beverage');
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(initial?.paymentMethod ?? defaultPaymentMethod);
+  const [merchant, setMerchant] = useState(initial?.merchant ?? prefill?.merchant ?? '');
+  const [amount, setAmount] = useState(initial ? String(initial.amount) : prefill?.amount ?? '');
+  const suggestedInitialCategory = suggestCategory(initial?.merchant ?? prefill?.merchant ?? '');
+  const [category, setCategory] = useState<Category>(initial?.category ?? suggestedInitialCategory ?? 'Food & Beverage');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(initial?.paymentMethod ?? prefill?.paymentMethod ?? defaultPaymentMethod);
   const [datetime, setDatetime] = useState(initial ? localDateTimeInput(initial.datetime) : localDateTimeInput());
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const [categoryTouched, setCategoryTouched] = useState(Boolean(initial));
@@ -401,13 +424,14 @@ function TransactionForm({ initial, defaultPaymentMethod, onClose, onSave }: {
     if (savingRef.current) return;
     const parsedAmount = Number(amount);
     if (!merchant.trim()) { setError('Add a merchant or short description.'); return; }
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0 || parsedAmount > 1_000_000_000) { setError('Enter a positive amount in RM.'); return; }
+    const roundedAmount = Math.round(parsedAmount * 100) / 100;
+    if (!Number.isFinite(parsedAmount) || roundedAmount < 0.01 || parsedAmount > 1_000_000_000) { setError('Enter an amount of at least RM 0.01.'); return; }
     if (!datetime || Number.isNaN(new Date(datetime).getTime())) { setError('Choose a valid local date and time.'); return; }
     savingRef.current = true;
     setSaving(true);
     onSave({
       merchant: merchant.trim(),
-      amount: Math.round(parsedAmount * 100) / 100,
+      amount: roundedAmount,
       category,
       paymentMethod,
       datetime: new Date(datetime).toISOString(),
@@ -428,6 +452,7 @@ function TransactionForm({ initial, defaultPaymentMethod, onClose, onSave }: {
             <label className="field-group wide"><span className="field-label">Date and time · your local time</span><input className="form-field" type="datetime-local" value={datetime} onChange={(event) => setDatetime(event.target.value)} data-testid="input-transaction-datetime" /></label>
             <label className="field-group wide"><span className="field-label">Note <span className="muted" style={{ fontWeight: 400 }}>· optional</span></span><textarea className="form-field" rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Anything to remember?" maxLength={240} data-testid="input-transaction-notes" /></label>
           </div>
+          {prefill && <div className="notice" role="status" data-testid="status-quick-entry-review"><Check size={15} /><span>{prefill.invalidFields.length ? `Some URL details could not be used (${prefill.invalidFields.join(', ')}). Review and complete the fields before saving.` : 'Review these details before saving. Nothing has been added yet.'}</span></div>}
           {recommended && !categoryTouched && <div className="notice"><Check size={15} /><span>Suggested category: <strong>{recommended}</strong>. You can change it above.</span></div>}
           {error && <div className="form-error" role="alert" data-testid="error-transaction-form">{error}</div>}
           <div className="modal-actions"><button className="secondary-btn" type="button" onClick={onClose} data-testid="button-cancel-transaction">Cancel</button><button className="primary-btn" type="submit" disabled={saving} data-testid="button-save-transaction">{saving ? 'Saving…' : initial ? 'Save changes' : 'Save purchase'} <ArrowRight size={15} /></button></div>
