@@ -1,0 +1,98 @@
+Build a complete, mobile-first personal expense tracker web app called "TapLedger" designed specifically for iPhone users in Malaysia.
+
+IMPORTANT:
+- I am developing this entirely on my iPhone.
+- Make the app work well in iPhone Safari.
+- Create a polished, modern interface, not just a basic prototype.
+- Use Malaysian Ringgit (RM) as the currency.
+
+TECHNOLOGY:
+- Use React and TypeScript.
+- Use a clean, responsive mobile-first design.
+- Use localStorage to persist transactions between visits.
+- Do not require a backend server or paid API for the initial version.
+
+FEATURES:
+
+1. DASHBOARD
+- Show total spending today.
+- Show total spending this month.
+- Show monthly budget and remaining budget.
+- Display recent transactions.
+- Include a spending breakdown by category.
+
+2. ADD EXPENSE
+- Amount in RM.
+- Merchant or description.
+- Category.
+- Payment method: Cash, Debit Card, Credit Card, TNG eWallet, DuitNow QR, and Other.
+- Transaction date and time.
+- Optional notes.
+- Save, edit, and delete transactions.
+
+3. SMART CATEGORIZATION
+- Automatically suggest categories based on descriptions.
+- Examples:
+  "Coffee" -> Food & Beverage
+  "Grab" -> Transport
+  "Watsons" -> Personal Care
+  "Groceries" -> Groceries
+
+4. TRANSACTION HISTORY
+- Search transactions.
+- Filter by date and category.
+- Show the merchant, amount, category, and payment method.
+
+5. REPORTS
+- Show monthly spending trends.
+- Display category breakdowns.
+- Allow CSV export.
+
+6. DESIGN
+- Minimalist, premium-looking finance app.
+- Easy to operate with one hand.
+- Large amount display.
+- Bottom navigation: Home, History, Reports, Settings.
+- Include a prominent Quick Add button.
+- Use clear typography, rounded cards, and subtle animations.
+- Support iPhone screen sizes and safe areas.
+- Use a clean, modern financial dashboard design.
+- Make all buttons and navigation functional.
+
+7. DATA SAFETY
+- Validate transaction amounts.
+- Prevent accidental duplicate submissions.
+- Confirm before deleting transactions.
+- Include a way to export transaction data.
+- Persist transactions after refreshing or reopening the app.
+
+8. SETTINGS
+- Allow users to set a monthly budget.
+- Allow users to select a default payment method.
+- Display the total number of transactions.
+- Provide a button to export all transaction data.
+
+9. FUTURE INTEGRATION
+- Structure the code so an Apple Shortcut can later send transaction data to the app through a secure API.
+- I eventually want to use iPhone Back Tap to trigger a shortcut that captures a payment confirmation screenshot, extracts the merchant and amount using AI, and saves the transaction.
+- Do not implement screenshot recognition or AI API integration yet.
+- Do not pretend that iOS allows unrestricted background screenshots of other apps.
+
+10. TECHNICAL REQUIREMENTS
+- Use React and TypeScript.
+- Use localStorage for the initial version.
+- Keep the code organized and easy to maintain.
+- Handle empty states and invalid input gracefully.
+- Ensure the app works on mobile Safari.
+- Avoid unnecessary dependencies.
+
+Please build the actual working application, not just a design mockup.
+
+After implementation:
+1. Check for errors and fix them.
+2. Ensure that adding, editing, and deleting transactions work correctly.
+3. Ensure the dashboard updates automatically.
+4. Show me how to preview and test the app on my iPhone.
+5. Explain how to publish the app and add it to my iPhone Home Screen.
+
+Start building the application now.

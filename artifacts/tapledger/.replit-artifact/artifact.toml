@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "TapLedger"
+description = "A mobile-first personal expense tracker for iPhone users in Malaysia, with local transaction storage, RM budgets, spending reports, and CSV export."
+version = "1.0.0"
+id = "artifacts/tapledger"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21257
+
+[services.development]
+run = "pnpm --filter @workspace/tapledger run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/tapledger", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/tapledger/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21257"
+BASE_PATH = "/"

@@ -1,0 +1,1 @@
+- [Apple Shortcut capture](tapledger-shortcuts.md) — Keep the future Back Tap flow user-initiated and secure; don't assume iOS permits background screenshots.
