@@ -22,6 +22,7 @@ function App() {
   const [activeTransaction, setActiveTransaction] = useState<Transaction | null>(null);
   const [quickEntryPrefill, setQuickEntryPrefill] = useState<ExpenseReviewDraft | null>(null);
   const [toast, setToast] = useState('');
+  const [storageError, setStorageError] = useState('');
   const [location] = useLocation();
   const quickAddProcessed = useRef(false);
 
@@ -42,8 +43,17 @@ function App() {
   }, []);
 
   const updateData = (next: LedgerData) => {
-    setData(next);
-    persistLedger(next);
+    try {
+      persistLedger(next);
+      setData(next);
+      setStorageError('');
+      return true;
+    } catch (error) {
+      console.error('Could not save TapLedger data on this device', error);
+      setToast('');
+      setStorageError('Could not save on this device. Your changes were not applied. Check available storage or browser settings, then try again.');
+      return false;
+    }
   };
   const notify = (message: string) => {
     setToast(message);
@@ -59,22 +69,25 @@ function App() {
     const transactions = id
       ? data.transactions.map((item) => item.id === id ? updated : item)
       : [updated, ...data.transactions];
-    updateData({ ...data, transactions: transactions.sort((a, b) => b.datetime.localeCompare(a.datetime)) });
+    if (!updateData({ ...data, transactions: transactions.sort((a, b) => b.datetime.localeCompare(a.datetime)) })) return false;
     setActiveModal(null);
     setQuickEntryPrefill(null);
     notify(id ? 'Purchase updated' : 'Purchase saved');
+    return true;
   };
   const deleteTransaction = () => {
-    if (!activeTransaction) return;
-    updateData({ ...data, transactions: data.transactions.filter((item) => item.id !== activeTransaction.id) });
+    if (!activeTransaction) return false;
+    if (!updateData({ ...data, transactions: data.transactions.filter((item) => item.id !== activeTransaction.id) })) return false;
     setActiveModal(null);
     setActiveTransaction(null);
     notify('Purchase removed');
+    return true;
   };
   const clearAll = () => {
-    updateData({ ...data, transactions: [] });
+    if (!updateData({ ...data, transactions: [] })) return false;
     setActiveModal(null);
     notify('All purchases cleared');
+    return true;
   };
   const exportAll = () => {
     const payload = JSON.stringify({ ...data, exportedAt: new Date().toISOString() }, null, 2);
@@ -117,6 +130,7 @@ function App() {
         </Switch>
       </main>
       {toast && <div className="toast" role="status" data-testid="status-toast">{toast}</div>}
+      {storageError && <div className="storage-error" role="alert" data-testid="error-storage">{storageError}</div>}
       {(activeModal === 'add' || activeModal === 'edit') && (
         <TransactionForm
           key={`${activeModal}-${activeTransaction?.id ?? 'new'}`}
@@ -338,7 +352,7 @@ function Reports({ data, onExport }: { data: LedgerData; onExport: () => void })
 }
 
 function SettingsPage({ data, onUpdate, onExport, onClear, notify }: {
-  data: LedgerData; onUpdate: (next: LedgerData) => void; onExport: () => void; onClear: () => void; notify: (message: string) => void;
+  data: LedgerData; onUpdate: (next: LedgerData) => boolean; onExport: () => void; onClear: () => void; notify: (message: string) => void;
 }) {
   const [budgetText, setBudgetText] = useState(String(data.settings.monthlyBudget));
   const transactionCount = data.transactions.length;
@@ -349,12 +363,10 @@ function SettingsPage({ data, onUpdate, onExport, onClear, notify }: {
       notify('Enter a budget between RM 0.01 and RM 1,000,000');
       return;
     }
-    onUpdate({ ...data, settings: { ...data.settings, monthlyBudget: amount } });
-    notify('Monthly budget saved');
+    if (onUpdate({ ...data, settings: { ...data.settings, monthlyBudget: amount } })) notify('Monthly budget saved');
   };
   const changePayment = (method: PaymentMethod) => {
-    onUpdate({ ...data, settings: { ...data.settings, defaultPaymentMethod: method } });
-    notify('Default payment method saved');
+    if (onUpdate({ ...data, settings: { ...data.settings, defaultPaymentMethod: method } })) notify('Default payment method saved');
   };
   return (
     <>
@@ -401,7 +413,7 @@ function SettingsPage({ data, onUpdate, onExport, onClear, notify }: {
 function TransactionForm({ initial, prefill, defaultPaymentMethod, onClose, onSave }: {
   initial: Transaction | null; defaultPaymentMethod: PaymentMethod; onClose: () => void;
   prefill: ExpenseReviewDraft | null;
-  onSave: (values: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>, id?: string) => void;
+  onSave: (values: Omit<Transaction, 'id' | 'createdAt' | 'updatedAt'>, id?: string) => boolean;
 }) {
   const [merchant, setMerchant] = useState(initial?.merchant ?? prefill?.merchant ?? '');
   const [amount, setAmount] = useState(initial ? String(initial.amount) : prefill?.amount ?? '');
@@ -429,7 +441,7 @@ function TransactionForm({ initial, prefill, defaultPaymentMethod, onClose, onSa
     if (!datetime || Number.isNaN(new Date(datetime).getTime())) { setError('Choose a valid local date and time.'); return; }
     savingRef.current = true;
     setSaving(true);
-    onSave({
+    const saved = onSave({
       merchant: merchant.trim(),
       amount: roundedAmount,
       category,
@@ -437,6 +449,11 @@ function TransactionForm({ initial, prefill, defaultPaymentMethod, onClose, onSa
       datetime: new Date(datetime).toISOString(),
       ...(notes.trim() ? { notes: notes.trim() } : {}),
     }, initial?.id);
+    if (!saved) {
+      setError('Could not save on this device. Your purchase is still in this form; check available storage or browser settings and try again.');
+      savingRef.current = false;
+      setSaving(false);
+    }
   };
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
@@ -463,10 +480,10 @@ function TransactionForm({ initial, prefill, defaultPaymentMethod, onClose, onSa
 }
 
 function ConfirmModal({ title, description, confirmLabel, onClose, onConfirm }: {
-  title: string; description: string; confirmLabel: string; onClose: () => void; onConfirm: () => void;
+  title: string; description: string; confirmLabel: string; onClose: () => void; onConfirm: () => boolean;
 }) {
   const [busy, setBusy] = useState(false);
-  const confirm = () => { if (busy) return; setBusy(true); onConfirm(); };
+  const confirm = () => { if (busy) return; setBusy(true); if (onConfirm() === false) setBusy(false); };
   return (
     <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
       <section className="modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
