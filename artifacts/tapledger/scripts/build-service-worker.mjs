@@ -42,14 +42,16 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET' || url.origin !== self.location.origin || !url.pathname.startsWith(new URL(self.registration.scope).pathname)) return;
 
   if (request.mode === 'navigate') {
-    event.respondWith(fetch(request).catch(async () => {
+    event.respondWith((async () => {
       const cache = await caches.open(CACHE_NAME);
-      return (await cache.match(urlFor('index.html'))) || Response.error();
-    }));
+      return (await cache.match(urlFor('index.html'))) || fetch(urlFor('index.html'));
+    })());
     return;
   }
 
-  event.respondWith(caches.match(request).then((cached) => cached || fetch(request)));
+  if (PRECACHE.some((path) => url.href === urlFor(path))) {
+    event.respondWith(caches.match(request).then((cached) => cached || fetch(request)));
+  }
 });
 `;
 

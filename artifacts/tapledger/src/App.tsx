@@ -21,25 +21,29 @@ function App() {
   const [activeModal, setActiveModal] = useState<'add' | 'edit' | 'delete' | 'clear' | null>(null);
   const [activeTransaction, setActiveTransaction] = useState<Transaction | null>(null);
   const [quickEntryPrefill, setQuickEntryPrefill] = useState<ExpenseReviewDraft | null>(null);
+  const [quickEntryVersion, setQuickEntryVersion] = useState(0);
   const [toast, setToast] = useState('');
   const [storageError, setStorageError] = useState('');
   const [location] = useLocation();
-  const quickAddProcessed = useRef(false);
-
   useEffect(() => {
-    if (quickAddProcessed.current) return;
-    quickAddProcessed.current = true;
-    const prefill = parseQuickEntryParams(window.location.search);
-    if (!prefill) return;
+    const handleQuickEntry = () => {
+      const prefill = parseQuickEntryParams(window.location.hash.slice(1))
+        ?? parseQuickEntryParams(window.location.search);
+      if (!prefill) return;
 
-    setQuickEntryPrefill(prefill);
-    setActiveTransaction(null);
-    setActiveModal('add');
-    window.history.replaceState(
-      window.history.state,
-      '',
-      stripQuickEntryParams(window.location.href),
-    );
+      setQuickEntryPrefill(prefill);
+      setQuickEntryVersion((version) => version + 1);
+      setActiveTransaction(null);
+      setActiveModal('add');
+      window.history.replaceState(
+        window.history.state,
+        '',
+        stripQuickEntryParams(window.location.href),
+      );
+    };
+    handleQuickEntry();
+    window.addEventListener('hashchange', handleQuickEntry);
+    return () => window.removeEventListener('hashchange', handleQuickEntry);
   }, []);
 
   const updateData = (next: LedgerData) => {
@@ -133,7 +137,7 @@ function App() {
       {storageError && <div className="storage-error" role="alert" data-testid="error-storage">{storageError}</div>}
       {(activeModal === 'add' || activeModal === 'edit') && (
         <TransactionForm
-          key={`${activeModal}-${activeTransaction?.id ?? 'new'}`}
+          key={`${activeModal}-${activeTransaction?.id ?? 'new'}-${quickEntryVersion}`}
           initial={activeModal === 'edit' ? activeTransaction : null}
           prefill={activeModal === 'add' ? quickEntryPrefill : null}
           defaultPaymentMethod={data.settings.defaultPaymentMethod}

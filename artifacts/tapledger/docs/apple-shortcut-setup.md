@@ -13,10 +13,10 @@ TapLedger's shortcut handoff opens the existing expense form with suggested valu
 7. Add a **Text** action and insert the Ask for Input and URL Encode magic variables:
 
    ```text
-   https://YOUR-PUBLISHED-TAPLEDGER-DOMAIN/?quickAdd=true&amount=[Amount]&merchant=[Encoded Merchant]&paymentMethod=[Encoded Payment Method]
+   https://YOUR-PUBLISHED-TAPLEDGER-DOMAIN/#quickAdd=true&amount=[Amount]&merchant=[Encoded Merchant]&paymentMethod=[Encoded Payment Method]
    ```
 
-   Replace `YOUR-PUBLISHED-TAPLEDGER-DOMAIN` with the published TapLedger address. Do not add API keys or other credentials to this URL.
+   Replace `YOUR-PUBLISHED-TAPLEDGER-DOMAIN` with the published TapLedger address. Keep the `#` before `quickAdd`; it keeps the expense details in the browser instead of the HTTP request. Do not add API keys or other credentials to this URL.
 8. Add **Open URLs** and pass it the Text result.
 9. When TapLedger opens, check the merchant, amount, category, payment method, and date/time. Tap **Save purchase** only after confirming the details.
 
@@ -32,10 +32,11 @@ Back Tap runs the Shortcut; it does not grant a normal website permission to sil
 
 - `quickAdd=true` opens TapLedger's existing expense form.
 - Amount, merchant, and payment method are prefilled when valid. Unknown or invalid values are not trusted; the form asks the user to review or complete them.
-- The one-time handoff parameters are removed from the address bar after the form opens.
+- The one-time handoff fragment is removed from the address bar after the form opens.
 - No transaction is saved until the user confirms. The existing form prevents a second submit while a save is in progress.
-- This is a URL handoff, not a server API. URL values can be visible to the browser and may appear in system or access logs. Do not include secrets or credentials, and avoid putting information in the URL that should not be exposed.
+- This is a local URL fragment handoff, not a server API. The fragment is not sent in HTTP requests or cached by TapLedger's Service Worker. It can still be visible in the browser or Shortcut history; do not include secrets or credentials.
+- Older Shortcuts using `?quickAdd=...` still prefill the form, but the initial request may already have exposed those query values to the hosting server. Update them to use `#quickAdd=...`.
 
 ## Future screenshot or receipt recognition
 
-No screenshot capture, OCR, or AI processing is implemented. For a future integration, accept only a screenshot the user explicitly selected or a capture iOS explicitly permits. A secure server-side service could return an untrusted `ExpenseReviewDraft`; pass that draft into the same review form and require the user's confirmation before saving. Keep any service credentials on the server, never in the app bundle or URL.
+No screenshot capture, OCR, or AI processing is implemented. For a future integration, accept only a screenshot the user explicitly selected or a capture iOS explicitly permits. Keep expense processing on the device, pass an untrusted `ExpenseReviewDraft` into the same review form, and require the user's confirmation before saving.
