@@ -1,4 +1,5 @@
 import { createRoot } from 'react-dom/client';
+import { Router } from 'wouter';
 
 import App from './App';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -12,6 +13,16 @@ createRoot(document.getElementById('root')!, {
   },
 }).render(
   <ErrorBoundary>
-    <App />
+    <Router base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+      <App />
+    </Router>
   </ErrorBoundary>,
 );
+
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch((error) => {
+      console.error('TapLedger offline setup failed', error);
+    });
+  });
+}
