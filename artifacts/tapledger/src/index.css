@@ -155,6 +155,7 @@ h3 { font:700 14px/1.3 var(--app-font-display); margin:0; }
 .confirm-copy {font-size:13px;line-height:1.6;color:#748078;margin:12px 0 23px}
 .notice {padding:12px 14px;border-radius:13px;background:#edf2e9;color:#44664f;font-size:12px;display:flex;gap:9px;align-items:flex-start;margin-top:14px}
 .toast {position:fixed;z-index:90;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#214d40;color:#fff8eb;padding:11px 17px;border-radius:13px;font-size:12px;box-shadow:0 10px 30px rgba(24,58,44,.2);animation:fade-in .2s ease;white-space:nowrap}
+.storage-error {position:fixed;z-index:91;left:16px;right:16px;bottom:calc(92px + env(safe-area-inset-bottom));max-width:520px;margin:auto;background:#fff1eb;color:#8f3028;border:1px solid #dc8c7a;padding:12px 15px;border-radius:13px;font-size:12px;line-height:1.5;box-shadow:0 10px 30px rgba(24,58,44,.2);pointer-events:none}
 .page-enter {animation:page-in .28s ease both}
 .blank-state-cta {margin-top:15px}
 .progress-note {font-size:12px;color:#667c6c}
@@ -177,6 +178,7 @@ h3 { font:700 14px/1.3 var(--app-font-display); margin:0; }
  .modal {border-radius:27px;padding:25px 27px;max-height:88dvh}
  .modal-handle {display:none}
  .toast {bottom:28px}
+ .storage-error {bottom:28px}
 }
 @media (max-width:699px) {
  .content-wrap {padding:23px 17px 35px}

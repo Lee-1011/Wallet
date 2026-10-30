@@ -60,5 +60,6 @@ export function parseQuickEntryParams(search: string): ExpenseReviewDraft | null
 export function stripQuickEntryParams(href: string): string {
   const url = new URL(href);
   QUICK_ENTRY_PARAMS.forEach((name) => url.searchParams.delete(name));
+  if (new URLSearchParams(url.hash.slice(1)).has('quickAdd')) url.hash = '';
   return `${url.pathname}${url.search}${url.hash}`;
 }
